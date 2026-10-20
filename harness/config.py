@@ -38,7 +38,7 @@ class HarnessConfig:
     api_key: str = ""
     model: str = "gpt-4o-mini"
     temperature: Optional[float] = None
-    max_iterations: int = 8            # 单轮问题 agent 循环最多几步（防死循环）
+    max_iterations: int = 40           # 单轮问题 agent 循环最多几步（防死循环；科研长任务建议 60~200）
     system_prompt: str = (
         "你是一个善于使用工具的智能体。需要实时信息、精确计算或外部数据时，"
         "请调用可用工具；否则直接、简洁地回答用户。用中文回答。"
@@ -94,7 +94,7 @@ class HarnessConfig:
             api_key=_f("LLM_API_KEY") or "",
             model=_f("LLM_MODEL") or "gpt-4o-mini",
             temperature=float(temperature) if temperature else None,
-            max_iterations=int(max_iter) if max_iter else 8,
+            max_iterations=int(max_iter) if max_iter else 40,
             system_prompt=_f("SYSTEM_PROMPT") or cls.system_prompt,
             request_timeout=float(request_timeout) if request_timeout else 90.0,
             tool_timeout=float(tool_timeout) if tool_timeout else 30.0,

@@ -160,7 +160,9 @@ class Agent:
 
         raise IterationLimitError(
             f"已达最大迭代步数 {self.max_iterations}，模型仍未给出最终回答"
-            "（可能工具调用陷入循环）。可用 agent.reset() 或 CLI 的 /clear 重来。"
+            "（可能任务确实很长，也可能工具调用陷入循环）。"
+            "可在 .env 里调大 AGENT_MAX_ITERATIONS（默认 40，科研长任务建议 60~200）后重试，"
+            "或用 agent.reset() / CLI 的 /clear 重来。"
         )
 
     # ---- 内部 ----

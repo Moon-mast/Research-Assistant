@@ -356,7 +356,7 @@ answer = agent.run("茅台今天多少钱？")                   # 完整跑完�
 | `LLM_API_KEY` | 空 | 密钥（Ollama 填任意占位） |
 | `LLM_MODEL` | `gpt-4o-mini` | 模型名 |
 | `LLM_TEMPERATURE` | 不传 | 采样温度，省略则交给服务端默认 |
-| `AGENT_MAX_ITERATIONS` | `8` | 单轮最多迭代步数，防工具死循环 |
+| `AGENT_MAX_ITERATIONS` | `40` | 单轮最多迭代步数（防死循环闸门）；论文解析/综述等长任务建议 `60~200` |
 | `COLLAB_ENABLED` | `0` | 是否启用「主答+审查」多模型协作 |
 | `COLLAB_CRITIC_MODEL` | 该厂商 light | 协作里审查角色的模型（默认取厂商预设的轻量模型） |
 | `CONTEXT_COMPRESS` | `1` | 上下文压缩总开关（0=关闭，回到"从不压缩"） |
