@@ -80,6 +80,7 @@ class Bridge:
         from harness.skills import discover, default_skills_dir
 
         cfg = self.config or HarnessConfig.from_env()
+        self.config = cfg      # 冷启动（.env 接入、未点过设置）也要能实时拉模型
         prov = [
             {"id": p.id, "name": p.name, "base_url": p.base_url, "models": p.models,
              "light": p.light, "note": p.note}

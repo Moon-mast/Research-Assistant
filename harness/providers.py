@@ -39,12 +39,13 @@ class Provider:
 # light = "主答+审查"协作里审查/轻量角色的默认模型
 PROVIDERS: list[Provider] = [
     Provider("openai", "OpenAI", "https://api.openai.com/v1",
-             ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"],
-             light="gpt-4o-mini"),
+             ["chatgpt-6-sol", "gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"],
+             light="gpt-4o-mini",
+             note="前沿模型与旧模型都在下拉里，模型名以「🔄 实时获取」的端点列表为准"),
     Provider("deepseek", "DeepSeek", "https://api.deepseek.com/v1",
-             ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
-             light="deepseek-v4-flash",
-             note="V4 系列(pro 主答 / flash 审查或轻量)工具调用与多智能体协作能力强；deepseek-chat 为通用别名；reasoner 偏推理，工具调用表现可能不稳"),
+             ["deepseek-v4-flash-1017", "deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
+             light="deepseek-v4-flash-1017",
+             note="V4 系列(flash-1017 为最新快照 / pro 主答 / flash 审查或轻量)工具调用与多智能体协作能力强；deepseek-chat 为通用别名；reasoner 偏推理，工具调用表现可能不稳"),
     Provider("dashscope", "通义千问 Qwen（阿里云）", "https://dashscope.aliyuncs.com/compatible-mode/v1",
              ["qwen-max", "qwen-plus", "qwen-turbo", "qwen2.5-72b-instruct"],
              light="qwen-turbo"),
@@ -75,7 +76,8 @@ def fetch_remote_models(base_url: str, api_key: str = "", timeout: float = 8.0) 
 
     模型版本不固化：界面/向导应优先用本函数的实时结果，PROVIDERS 里的静态列表
     只在拉取失败（无 key / 端点不支持 /models / 断网）时作回退建议。
-    返回去重排序后的模型 id 列表；失败抛异常，由调用方决定回退。
+    返回去重后的模型 id 列表（保持端点返回顺序——厂商通常把最新模型排在前）；
+    失败抛异常，由调用方决定回退到静态建议。
     """
     try:
         from openai import OpenAI
@@ -84,7 +86,7 @@ def fetch_remote_models(base_url: str, api_key: str = "", timeout: float = 8.0) 
     client = OpenAI(base_url=base_url, api_key=api_key or "empty",
                     timeout=timeout, max_retries=0)
     ids = [str(m.id) for m in client.models.list()]
-    return sorted(dict.fromkeys(ids))
+    return list(dict.fromkeys(ids))
 
 
 def provider_by_name(name: str) -> Provider | None:

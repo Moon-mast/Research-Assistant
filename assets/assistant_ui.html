@@ -936,22 +936,37 @@
              var cw=document.getElementById('critic');
              if(p.light && !cw.value.trim()) cw.value=p.light;
              refreshModels(p.base_url, document.getElementById('key').value.trim()); }
-      else { fillModelDatalist([]); document.getElementById('model').value=''; }
+      else { fillModelsMerged([], document.getElementById('base').value.trim()); }
     };
   }
   function fillModelDatalist(models){
     var dl=document.getElementById('modelList'); dl.innerHTML='';
     (models||[]).forEach(function(m){ var o=document.createElement('option'); o.value=m; dl.appendChild(o); });
   }
-  /* 模型版本不固化：实时拉取该端点最新模型列表（静态建议只在拉取失败时兜底） */
+  /* 模型版本不固化，且老模型保留：
+     下拉 = 实时端点列表（厂商最新，通常排前） + 静态预设里的旧模型 + 当前已填模型，去重合并 */
+  function presetModelsFor(base){
+    var ps=(data && data.providers)||[];
+    for(var i=0;i<ps.length;i++){ if(ps[i].base_url===base) return ps[i].models||[]; }
+    return [];
+  }
+  function fillModelsMerged(live, base){
+    var seen={}, out=[];
+    var cur=document.getElementById('model').value.trim();
+    if(cur){ seen[cur]=1; out.push(cur); }               // 当前模型永远保留在列表里
+    (live||[]).forEach(function(m){ if(m && !seen[m]){ seen[m]=1; out.push(m); } });
+    presetModelsFor(base).forEach(function(m){ if(m && !seen[m]){ seen[m]=1; out.push(m); } });
+    fillModelDatalist(out);
+    return out;
+  }
   function refreshModels(base, key){
     if(!api) return;
     api.list_models(base, key).then(function(r){
       if(r && r.ok && r.models && r.models.length){
-        fillModelDatalist(r.models);
+        var all=fillModelsMerged(r.models, base);
         var mi=document.getElementById('model');
         if(!mi.value.trim()) mi.value=r.models[0];
-        toast(r.msg+'，已填入第一个','🔄');
+        toast('实时获取 '+r.models.length+' 个最新模型，合并后共 '+all.length+' 个可选','🔄');
       } else { toast((r&&r.msg)||'实时拉取失败，先用静态建议','⚠️'); }
     }).catch(function(e){ toast('实时拉取失败:'+e,'⚠️'); });
   }
@@ -981,6 +996,15 @@
       (boot.engine_kind==='collab'?'主答 ':'')+esc(boot.model||'')+
       (boot.api_key_set?'':' · 未配 key');
     fillSidebar(boot); fillSkills(boot); fillProviders(boot); bindSave(boot);
+    /* 厂商上新模型后自动同步：启动即后台拉取端点 /models，合并进下拉（不动当前已选模型） */
+    if(boot.api_key_set){
+      api.list_models().then(function(r){
+        if(r && r.ok && r.models && r.models.length){
+          var all=fillModelsMerged(r.models, boot.base_url||'');
+          toast('已同步厂商最新模型，共 '+all.length+' 个可选','🔄');
+        }
+      }).catch(function(){});
+    }
   }
   function init(){
     // 清掉静态演示对话，换成真实开场
