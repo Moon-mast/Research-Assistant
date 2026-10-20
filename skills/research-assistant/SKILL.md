@@ -86,18 +86,26 @@ version: 1
 
 ## 二点五、宿主环境可用工具（harness 内建）
 
-在 harness 桌面版/CLI 里干活时，以下工具真实可用（模型直接调用）：
+在 harness 桌面版/CLI 里干活时，以下工具**随引擎一起就位**（模型直接调用）：
 
-| 工具 | 用途 |
-|---|---|
-| `list_files` / `read_file` | 列目录 / 读 UTF-8 文本文件（工作区内） |
-| `pdf_info(path)` | PDF 页数/标题/作者/逐页文本量；判断是否扫描件 |
-| `pdf_extract(path, first_page, last_page)` | 抽取 PDF 正文（pypdf 自动解压 FlateDecode 流），带页码标记；长文分页续读 |
-| `python_exec(code)` | 执行一段 Python 并返回 print 输出（需用户确认）；可调第三方库做数据/格式处理 |
-| `write_file(path, content)` | 写出产物（需用户确认） |
+| 工具 | 用途 | 前置条件 |
+|---|---|---|
+| `list_files` / `read_file` | 列目录 / 读 UTF-8 文本文件 | 已选工作目录 |
+| `pdf_info(path)` | PDF 页数/标题/作者/逐页文本量；判断是否扫描件 | 已选工作目录 |
+| `pdf_extract(path, first_page, last_page)` | 抽取 PDF 正文（pypdf 自动解压 FlateDecode 流），带页码标记；长文分页续读 | 已选工作目录 |
+| `python_exec(code)` | 执行一段 Python 并返回 print 输出（需用户确认）；数据/格式处理的兜底 | 无（随时可用） |
+| `write_file(path, content)` | 写出产物（需用户确认） | 已选工作目录 |
+| `library_list_galaxy_ui` / `library_read_galaxy_ui` | 只读浏览 galaxy-ui 的 **UI 组件**素材库 | 技能存在即可 |
 
-注意：PDF 是二进制（正文为 FlateDecode 压缩流），**必须用 `pdf_extract` 而不是 `read_file`**；
-引用原文时带上 `P页码` 标记。扫描图片页无文本层，`pdf_extract` 会明确标注（OCR 需外部引擎）。
+重要约束（避免白费力气）：
+1. **未选工作目录时**，文件/PDF 工具会返回"尚未选择工作目录"的提示——这是正常状态，
+   此时应通过 `ask_user` 请用户点「📁 文件夹」选目录（或 CLI `/folder <路径>`），**不要**改用
+   其它工具去翻目录，更不要假装读过文件。
+2. **论文不在 galaxy 素材库里**：galaxy-ui 的素材库只含 Uiverse.io 的 11 类 UI 组件
+   （Buttons/Cards/…/Tooltips），`library_*` 工具也访问不了它之外的地方。论文 PDF 一定
+   在用户的工作目录（或让用户先放进去），用 `pdf_info`/`pdf_extract` 读取。
+3. PDF 是二进制（正文为 FlateDecode 压缩流），**必须用 `pdf_extract` 而不是 `read_file`**；
+   引用原文时带上 `P页码` 标记。扫描图片页无文本层，工具会明确标注（OCR 需外部引擎）。
 
 ## 三、通用规则（验收标准）
 1. **可溯源**：所有关于论文内容的事实性回答都要给原文依据（页码/章节 + 原句），除非用户明确只要简答。

@@ -102,7 +102,8 @@ def main() -> None:
                   confirm_handler=confirm_write, ask_handler=ask_user)
     agent.add_tools([build_ask_tool()])  # 让模型可随时中途提问
     colab = None        # 懒创建：启用协作时才实例化
-    folder_ws = None    # 懒创建：/folder 选择工作目录后注入文件工具
+    folder_ws = FolderWorkspace()   # 分离态：工具先挂上，/folder 后 set_root 即生效
+    agent.add_tools(build_workspace_tools(folder_ws))
 
     # —— 技能系统：检测到 skills/ 即自动启用（技能工具 + 清单注入 + preview_html）——
     skills_dir = default_skills_dir()
@@ -219,13 +220,12 @@ def main() -> None:
             continue
         if cmd == "/folder":
             if not arg.strip():
-                if folder_ws is not None:
+                if folder_ws.root is not None:
                     print(f"当前工作目录：{folder_ws.root_str}")
                 else:
-                    print("未设置工作目录。用法：/folder D:\\某个文件夹")
+                    print("未设置工作目录。用法：/folder D:\\某个文件夹（文件/PDF 工具已就位，选目录后即生效）")
                 continue
             try:
-                folder_ws = FolderWorkspace(arg.strip()) if folder_ws is None else folder_ws
                 folder_ws.set_root(arg.strip())
                 tools = build_workspace_tools(folder_ws)
                 agent.add_tools(tools)
@@ -275,8 +275,7 @@ def main() -> None:
                         ask_handler=ask_user,
                     )
                     extra_tools = [build_ask_tool()]
-                    if folder_ws is not None:
-                        extra_tools += build_workspace_tools(folder_ws)
+                    extra_tools += build_workspace_tools(folder_ws)
                     colab.add_tools(extra_tools)
                     ensure_skills(colab)      # 技能工具 + 清单 + 已预载技能，接给主答
                 answer = colab.run(raw)

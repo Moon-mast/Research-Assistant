@@ -15,12 +15,23 @@ from .tools import Tool, make_tool
 MAX_READ_CHARS = 12000       # 单次读取字符上限，防止模型把大文件全读爆
 MAX_LIST_ITEMS = 2000        # 单次列出的条目上限
 
+NO_FOLDER_HINT = (
+    "尚未选择工作目录：工具已就位但不可用。请让用户点「📁 文件夹」选择工作目录"
+    "（或 CLI 输入 /folder <路径>）后再调用本工具；不要试图访问目录之外的路径。"
+)
+
 
 class FolderWorkspace:
-    """一个可变根目录的工作区；绑定在该实例上的工具始终跟随最新 root。"""
+    """一个可变根目录的工作区；绑定在该实例上的工具始终跟随最新 root。
 
-    def __init__(self, root: str | Path):
-        self.set_root(root)
+    支持分离态（root=None，构造时不传路径）：工具先挂上引擎、随叫随到，
+    未选目录时调用会得到 NO_FOLDER_HINT 的明确提示，而不是"工具不存在"。
+    """
+
+    def __init__(self, root: str | Path | None = None):
+        self._root: Path | None = None
+        if root is not None:
+            self.set_root(root)
 
     def set_root(self, root: str | Path) -> None:
         p = Path(root).expanduser()
@@ -29,15 +40,17 @@ class FolderWorkspace:
         self._root = p.resolve()
 
     @property
-    def root(self) -> Path:
+    def root(self) -> Path | None:
         return self._root
 
     @property
     def root_str(self) -> str:
-        return str(self._root)
+        return str(self._root) if self._root else ""
 
     # ---- 内部：解析并守住边界 ----
     def _resolve(self, raw: str) -> Path:
+        if self._root is None:
+            raise ValueError(NO_FOLDER_HINT)
         p = Path(raw).expanduser()
         if not p.is_absolute():
             p = self._root / p
@@ -125,7 +138,7 @@ class FolderWorkspace:
         return f"✔ 已写入 {len(content)} 字符 -> {target}"
 
     def describe(self) -> str:
-        return f"工作目录：{self._root}"
+        return f"工作目录：{self._root}" if self._root else "工作目录：未选择"
 
 
 def build_folder_tools(ws: FolderWorkspace) -> list[Tool]:

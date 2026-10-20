@@ -607,6 +607,7 @@ class _ChatWindow:
         self._busy = False
         self._settings_dialog = None
         self.workspace: "FolderWorkspace | None" = None
+        self._ws_placeholder = FolderWorkspace()   # 分离态：工具先挂上，选目录后 set_root 跟随
         self._pending_ask = None       # (answer_dict, event) —— 等待用户内联决定写入
         self._pending_q = None         # (answer_dict, event) —— 等待用户回答模型提问
         self._auto_allow_writes = False
@@ -967,8 +968,7 @@ class _ChatWindow:
         a = Agent(self.config, on_tool_start=self._on_tool_start,
                   on_tool_end=self._on_tool_end, confirm_handler=self._confirm_write,
                   ask_handler=self._ask_user)
-        if self.workspace is not None:
-            a.add_tools(build_workspace_tools(self.workspace))
+        a.add_tools(build_workspace_tools(self.workspace or self._ws_placeholder))
         a.add_tools([build_ask_tool()])
         self._ensure_skills(a)
         return a
@@ -992,8 +992,7 @@ class _ChatWindow:
                 on_tool_start=self._on_tool_start, on_tool_end=self._on_tool_end,
                 confirm_handler=self._confirm_write, ask_handler=self._ask_user)
             extra = [build_ask_tool()]
-            if self.workspace is not None:
-                extra += build_workspace_tools(self.workspace)
+            extra += build_workspace_tools(self.workspace or self._ws_placeholder)
             s["collab"].add_tools(extra)
             self._ensure_skills(s["collab"])
         return s["collab"]
@@ -1777,10 +1776,10 @@ class _ChatWindow:
         from pathlib import Path
 
         try:
-            if self.workspace is None:
-                self.workspace = FolderWorkspace(path)
-            else:
-                self.workspace.set_root(path)
+            # 复用同一实例（工具按名字去重绑定首个实例），只切换 root
+            ws = self.workspace if self.workspace is not None else self._ws_placeholder
+            ws.set_root(path)
+            self.workspace = ws
             tools = build_workspace_tools(self.workspace)
             self._bind_active()
             self._agent.add_tools(tools)

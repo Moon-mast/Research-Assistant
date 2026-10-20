@@ -12,6 +12,14 @@ version: 1
 本技能教你在要“漂亮的 UI/页面”时：**先翻素材库挑合口味的组件 → 读原文件确认可用 → 改造合并 →
 落成一个自包含的单文件 `.html` → 交给宿主在浏览器打开预览**。
 
+## 〇、素材库范围（先读这个）
+
+`galaxy-main` **只包含 Uiverse.io 的 11 类 UI 组件**：Buttons / Cards / Checkboxes / Forms /
+Inputs / loaders / Notifications / Patterns / Radio-buttons / Toggle-switches / Tooltips。
+库里**没有**论文、数据文件或其它素材；不要用 `library_*` 工具去找组件之外的东西，
+路径也只允许在库根之内（`..` 与绝对路径越界会被拒绝）。论文/文档请走工作区工具
+（需用户先选定工作目录），见 research-assistant 技能。
+
 ## 一、素材库怎么翻（只读，不影响工作目录）
 
 素材库根目录为 `galaxy-main`，用下面两个只读工具浏览（路径都相对库根）：

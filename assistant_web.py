@@ -100,7 +100,7 @@ class Bridge:
             "compress": cfg.context_compress,
             "providers": prov,
             "skills": skills,
-            "ws": str(self.ws.root) if self.ws else "",
+            "ws": self.ws.root_str if self.ws else "",
             "has_engine": self.engine is not None,
             "engine_kind": self.engine_kind,
             "backend": "pywebview",
@@ -157,8 +157,7 @@ class Bridge:
             self.engine_kind = "agent"
         self.engine = eng
         activate_skills(eng, get_workspace=lambda: self.ws)
-        if self.ws is not None:
-            self._attach_folder(self.ws.root)
+        self._attach_folder()      # 无条件挂工具（未选目录时为分离态提示）
 
     # ---------------------------------------------------------- 厂商设置
     def save_config(self, provider_id=None, base_url=None, model=None,
@@ -209,19 +208,25 @@ class Bridge:
         return info
 
     # ---------------------------------------------------------- 文件夹
-    def _attach_folder(self, path) -> None:
+    def _attach_folder(self, path=None) -> None:
         """把文件/PDF/脚本工具挂到当前引擎。
 
-        - FolderWorkspace 绑定方法的工具会跟随 root 动态变化，无需重复挂；
-        - 但引擎重建（save_config / 切协作）后新引擎没有工具，需要重挂；
+        - path 为空时挂一个"未选目录"的分离态工作区：工具从一开始就存在，
+          调用会得到"请先选目录"的明确提示，而不是技能里承诺了却找不到工具；
+        - FolderWorkspace 绑定方法的工具会跟随 root 动态变化，选目录后无需重挂；
+        - 引擎重建（save_config / 切协作）后新引擎没有工具，需要重挂；
         - 用 _tools_on_engine 记录避免同一引擎上重复挂载。
         """
         from harness.workspace import FolderWorkspace, build_workspace_tools
 
-        if self.ws is None:
-            self.ws = FolderWorkspace(str(path))
+        if path is None:
+            if self.ws is None:
+                self.ws = FolderWorkspace()      # 分离态：root=None
         else:
-            self.ws.set_root(str(path))
+            if self.ws is None:
+                self.ws = FolderWorkspace(str(path))
+            else:
+                self.ws.set_root(str(path))
         if self.engine is not None and getattr(self, "_tools_on_engine", None) is not id(self.engine):
             self.engine.add_tools(build_workspace_tools(self.ws))
             self._tools_on_engine = id(self.engine)
