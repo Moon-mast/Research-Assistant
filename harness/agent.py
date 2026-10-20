@@ -36,6 +36,14 @@ class Agent:
         self.system_prompt = system_prompt or self.config.system_prompt
         self.max_iterations = self.config.max_iterations
         self.verbose = self.config.verbose if verbose is None else verbose
+        # 仿 DeepSeek Harness 的请求扩展（thinking/output_config/max_tokens）与重试参数
+        from .client import build_wire_extra
+        self._wire_extra = build_wire_extra(self.config)
+        self._retry_kw = dict(
+            retry_max=self.config.llm_retry_max,
+            backoff_initial_ms=self.config.llm_retry_backoff_initial_ms,
+            backoff_max_ms=self.config.llm_retry_backoff_max_ms,
+        )
         self.tools: list[Tool] = REGISTRY.resolve(tools)
         # 回调钩子，便于 CLI 展示工具执行过程
         self.on_tool_start = on_tool_start
@@ -136,6 +144,8 @@ class Agent:
                 model=self.config.model,
                 temperature=self.config.temperature,
                 verbose=self.verbose,
+                wire_extra=self._wire_extra,
+                **self._retry_kw,
             )
             message = response.choices[0].message
             assistant_msg = self._assistant_to_param(message)

@@ -141,6 +141,19 @@ apply_credentials("https://api.deepseek.com/v1", "sk-xxx", "deepseek-chat")
 agent = Agent(HarnessConfig.from_env())
 ```
 
+## 模型调用方式：仿 DeepSeek Harness（dsh-llm）
+
+参照 DeepSeek 官方桌面 harness（`@deepseek-ai/dsh-llm-deepseek` + `dsh-llm-retry`）的调用方式实现：
+
+- **模型 id 直通**：请求里的模型名原样发给端点，厂商上新模型无需改代码（配合「🔄 实时获取」的 /models 同步）；
+- **推理控制**：请求体注入 `thinking: {type: enabled|disabled}` 与 `output_config: {effort: off|low|high|max}`
+  （默认 `enabled` + `high`，`LLM_THINKING` / `LLM_REASONING_EFFORT` 可调）；
+  `auto` 模式只在 DeepSeek 端点注入——其它厂商不认识这些字段会报 400；
+- **输出上限**：`LLM_MAX_TOKENS` 对应 dsh 的 `max_tokens`（0=不传，交给服务端默认）；
+- **分类重试**：`RATE_LIMIT / SERVER(5xx) / TIMEOUT / TRANSPORT / EMPTY_RESPONSE` 五类错误自动重试，
+  指数退避 500ms→10s + 10% 抖动（`LLM_RETRY_MAX` 控制次数），与 dsh-llm-retry normal 模式一致；
+  不可重试错误（如 400 参数错）立即抛出，空响应耗尽后交还原响应而不是中断循环。
+
 ## 上下文压缩：多轮会话省 token（参考 headroom）
 
 长会话是 token 消耗的大头：每一轮都会把**整段历史（含旧的工具输出）原样重发**，历史越积越重。
@@ -357,6 +370,10 @@ answer = agent.run("茅台今天多少钱？")                   # 完整跑完�
 | `LLM_MODEL` | `gpt-4o-mini` | 模型名 |
 | `LLM_TEMPERATURE` | 不传 | 采样温度，省略则交给服务端默认 |
 | `AGENT_MAX_ITERATIONS` | `40` | 单轮最多迭代步数（防死循环闸门）；论文解析/综述等长任务建议 `60~200` |
+| `LLM_THINKING` | `auto` | 思考模式：`auto`=仅 DeepSeek 端点注入；`enabled`/`disabled` 全局强制 |
+| `LLM_REASONING_EFFORT` | `high` | 推理力度 `off/low/high/max`（仿 dsh `output_config.effort`） |
+| `LLM_MAX_TOKENS` | `0` | 每请求输出上限；`0`=不传（仿 dsh 的 max_tokens，dsh 默认 256000） |
+| `LLM_RETRY_MAX` | `5` | 限流/5xx/超时/断连/空响应重试次数（仿 dsh-llm-retry normal 模式） |
 | `COLLAB_ENABLED` | `0` | 是否启用「主答+审查」多模型协作 |
 | `COLLAB_CRITIC_MODEL` | 该厂商 light | 协作里审查角色的模型（默认取厂商预设的轻量模型） |
 | `CONTEXT_COMPRESS` | `1` | 上下文压缩总开关（0=关闭，回到"从不压缩"） |

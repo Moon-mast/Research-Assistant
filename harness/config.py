@@ -56,6 +56,13 @@ class HarnessConfig:
     context_recall: bool = True             # 折叠后是否注册 recall_history 工具（可取回折叠前原文）
     context_keep_recent: int = 1            # 保留最近几个"已完成"轮次/回合的全文不折叠
     context_compress_mid: bool = True       # 单轮任务中途超预算时，也自动折叠更早的已消费工具回合
+    # —— 模型调用方式（仿 DeepSeek Harness dsh-llm-deepseek 的请求体与 dsh-llm-retry 的重试）——
+    llm_thinking: str = "auto"              # auto|enabled|disabled；auto=仅 DeepSeek 端点注入 thinking
+    llm_reasoning_effort: str = "high"      # off|low|high|max（dsh 默认 high；thinking 关闭时强制 off）
+    llm_max_tokens: int = 0                 # 每请求输出上限；0=不传（服务端默认；dsh 默认 256000）
+    llm_retry_max: int = 5                  # 限流/5xx/超时/断连/空响应 的重试次数（dsh normal 模式同款）
+    llm_retry_backoff_initial_ms: int = 500 # 退避起始（dsh：500ms）
+    llm_retry_backoff_max_ms: int = 10000   # 退避上限（dsh：10s）
 
     @classmethod
     def from_env(cls) -> "HarnessConfig":
@@ -89,6 +96,17 @@ class HarnessConfig:
         if ctx_mode not in ("gist", "off"):
             ctx_mode = "gist"
 
+        llm_thinking = (_f("LLM_THINKING") or "auto").strip().lower()
+        if llm_thinking not in ("auto", "enabled", "disabled"):
+            llm_thinking = "auto"
+        llm_effort = (_f("LLM_REASONING_EFFORT") or "high").strip().lower()
+        if llm_effort not in ("off", "low", "high", "max"):
+            llm_effort = "high"
+        llm_max_tokens = _int("LLM_MAX_TOKENS", 0)
+        llm_retry_max = _int("LLM_RETRY_MAX", 5)
+        llm_backoff_i = _int("LLM_RETRY_BACKOFF_INITIAL_MS", 500)
+        llm_backoff_m = _int("LLM_RETRY_BACKOFF_MAX_MS", 10000)
+
         return cls(
             base_url=(_f("LLM_BASE_URL") or cls.base_url).rstrip("/"),
             api_key=_f("LLM_API_KEY") or "",
@@ -107,6 +125,12 @@ class HarnessConfig:
             context_recall=_flag("CONTEXT_RECALL", True),
             context_keep_recent=_int("CONTEXT_KEEP_RECENT", 1),
             context_compress_mid=_flag("CONTEXT_COMPRESS_MID", True),
+            llm_thinking=llm_thinking,
+            llm_reasoning_effort=llm_effort,
+            llm_max_tokens=max(0, llm_max_tokens),
+            llm_retry_max=max(0, llm_retry_max),
+            llm_retry_backoff_initial_ms=max(1, llm_backoff_i),
+            llm_retry_backoff_max_ms=max(llm_backoff_i, llm_backoff_m),
         )
 
     def problems(self) -> list[str]:
