@@ -36,7 +36,7 @@ from .skills import (
 )
 from .team import Collaboration, guess_critic_model
 from .tools import build_ask_tool
-from .workspace import FolderWorkspace, build_folder_tools
+from .workspace import FolderWorkspace, build_folder_tools, build_workspace_tools
 
 try:
     from PIL import Image, ImageTk  # type: ignore
@@ -968,7 +968,7 @@ class _ChatWindow:
                   on_tool_end=self._on_tool_end, confirm_handler=self._confirm_write,
                   ask_handler=self._ask_user)
         if self.workspace is not None:
-            a.add_tools(build_folder_tools(self.workspace))
+            a.add_tools(build_workspace_tools(self.workspace))
         a.add_tools([build_ask_tool()])
         self._ensure_skills(a)
         return a
@@ -993,7 +993,7 @@ class _ChatWindow:
                 confirm_handler=self._confirm_write, ask_handler=self._ask_user)
             extra = [build_ask_tool()]
             if self.workspace is not None:
-                extra += build_folder_tools(self.workspace)
+                extra += build_workspace_tools(self.workspace)
             s["collab"].add_tools(extra)
             self._ensure_skills(s["collab"])
         return s["collab"]
@@ -1781,7 +1781,7 @@ class _ChatWindow:
                 self.workspace = FolderWorkspace(path)
             else:
                 self.workspace.set_root(path)
-            tools = build_folder_tools(self.workspace)
+            tools = build_workspace_tools(self.workspace)
             self._bind_active()
             self._agent.add_tools(tools)
             if self.cur and self.cur.get("collab") is not None:

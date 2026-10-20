@@ -84,6 +84,21 @@ version: 1
    并自动生成符合学术规范的 Figure Caption（说明内容 + 提炼核心趋势结论）。
 4. **中译英**：中文摘要/全文译成学术英语，保留术语一致；输出后附术语对照表。
 
+## 二点五、宿主环境可用工具（harness 内建）
+
+在 harness 桌面版/CLI 里干活时，以下工具真实可用（模型直接调用）：
+
+| 工具 | 用途 |
+|---|---|
+| `list_files` / `read_file` | 列目录 / 读 UTF-8 文本文件（工作区内） |
+| `pdf_info(path)` | PDF 页数/标题/作者/逐页文本量；判断是否扫描件 |
+| `pdf_extract(path, first_page, last_page)` | 抽取 PDF 正文（pypdf 自动解压 FlateDecode 流），带页码标记；长文分页续读 |
+| `python_exec(code)` | 执行一段 Python 并返回 print 输出（需用户确认）；可调第三方库做数据/格式处理 |
+| `write_file(path, content)` | 写出产物（需用户确认） |
+
+注意：PDF 是二进制（正文为 FlateDecode 压缩流），**必须用 `pdf_extract` 而不是 `read_file`**；
+引用原文时带上 `P页码` 标记。扫描图片页无文本层，`pdf_extract` 会明确标注（OCR 需外部引擎）。
+
 ## 三、通用规则（验收标准）
 1. **可溯源**：所有关于论文内容的事实性回答都要给原文依据（页码/章节 + 原句），除非用户明确只要简答。
 2. **不幻觉**：不确定的文献、数字、年份要明说；References 类输出逐条核实。

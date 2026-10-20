@@ -171,11 +171,22 @@ class Bridge:
 
         p = next((x for x in PROVIDERS if x.id == provider_id), None) if provider_id else None
         base = (base_url or (p.base_url if p else "")).strip()
-        model = (model or (p.models[0] if p and p.models else "")).strip()
         key = (api_key or "").strip()
-
+        model = (model or "").strip()
+        if not model:
+            # 模型版本不固化：留空时优先实时拉取该端点的最新模型列表
+            try:
+                from harness.providers import fetch_remote_models
+                live = fetch_remote_models(base, key)
+                if live:
+                    model = live[0]
+                    self._emit("sys", f"模型留空 → 自动选用端点实时列表第一个：{model}")
+            except Exception:
+                pass
+            if not model:
+                model = (p.models[0] if p and p.models else "").strip()
         if not base or not model:
-            return {"ok": False, "msg": "base_url 与 model 不能为空"}
+            return {"ok": False, "msg": "base_url 不能为空；model 可留空（自动取端点最新），拉取失败时才需手填"}
 
         # 直接落内存（本地 Ollama 之类的 key 可为空）
         cfg = HarnessConfig(base_url=base, api_key=key, model=model,
@@ -198,6 +209,24 @@ class Bridge:
         return info
 
     # ---------------------------------------------------------- 文件夹
+    def _attach_folder(self, path) -> None:
+        """把文件/PDF/脚本工具挂到当前引擎。
+
+        - FolderWorkspace 绑定方法的工具会跟随 root 动态变化，无需重复挂；
+        - 但引擎重建（save_config / 切协作）后新引擎没有工具，需要重挂；
+        - 用 _tools_on_engine 记录避免同一引擎上重复挂载。
+        """
+        from harness.workspace import FolderWorkspace, build_workspace_tools
+
+        if self.ws is None:
+            self.ws = FolderWorkspace(str(path))
+        else:
+            self.ws.set_root(str(path))
+        if self.engine is not None and getattr(self, "_tools_on_engine", None) is not id(self.engine):
+            self.engine.add_tools(build_workspace_tools(self.ws))
+            self._tools_on_engine = id(self.engine)
+            self.ws_tools = True
+
     def choose_folder(self) -> str:
         """打开系统文件夹选择框；选定后模型获得 list_files/read_file/write_file。"""
         try:
@@ -212,8 +241,6 @@ class Bridge:
         return self.set_folder(paths[0])
 
     def set_folder(self, path: str) -> str:
-        from harness.workspace import FolderWorkspace
-
         path = (path or "").strip().strip('"')
         if not path:
             return "路径为空"
@@ -221,15 +248,7 @@ class Bridge:
             p = Path(path).expanduser()
             if not p.is_dir():
                 return f"不是目录或不存在：{p}"
-            if self.ws is None:
-                from harness.workspace import build_folder_tools
-                self.ws = FolderWorkspace(str(p))
-                if self.engine is not None:
-                    tools = build_folder_tools(self.ws)
-                    self.engine.add_tools(tools)
-                    self.ws_tools = True
-            else:
-                self.ws.set_root(str(p))
+            self._attach_folder(p)
             self._emit("sys", f"📁 工作区已设为：{p}")
             return f"已把工作区设为 {p}"
         except Exception as e:
@@ -267,6 +286,26 @@ class Bridge:
             return "已载入：" + s.name
         except Exception as e:
             return f"载入技能失败：{e}"
+
+    # ---------------------------------------------------------- 模型实时列表
+    def list_models(self, base_url=None, api_key=None) -> dict:
+        """实时拉取该端点当前可用的模型列表（设置面板「🔄 最新」用）。
+
+        base_url/api_key 缺省时用当前已接入的配置；返回 {"ok", "models", "msg"}。
+        """
+        from harness.providers import fetch_remote_models
+        base = (base_url or (self.config.base_url if self.config else "") or "").strip()
+        if api_key is None:
+            api_key = self.config.api_key if self.config else ""
+        key = (api_key or "").strip()
+        if not base:
+            return {"ok": False, "models": [], "msg": "缺少 base_url"}
+        try:
+            models = fetch_remote_models(base, key)
+            return {"ok": True, "models": models,
+                    "msg": f"实时获取到 {len(models)} 个模型"}
+        except Exception as e:
+            return {"ok": False, "models": [], "msg": f"拉取失败：{e}"}
 
     # ---------------------------------------------------------- 对话
     def clear(self) -> None:

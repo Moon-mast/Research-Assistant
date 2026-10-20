@@ -70,6 +70,23 @@ PROVIDERS: list[Provider] = [
 CUSTOM_NAME = "自定义（手动填写 base_url/model）"
 
 
+def fetch_remote_models(base_url: str, api_key: str = "", timeout: float = 8.0) -> list[str]:
+    """实时拉取该端点当前可用的模型列表（OpenAI 兼容 GET /models）。
+
+    模型版本不固化：界面/向导应优先用本函数的实时结果，PROVIDERS 里的静态列表
+    只在拉取失败（无 key / 端点不支持 /models / 断网）时作回退建议。
+    返回去重排序后的模型 id 列表；失败抛异常，由调用方决定回退。
+    """
+    try:
+        from openai import OpenAI
+    except Exception as e:  # pragma: no cover
+        raise RuntimeError("未安装 openai 包，无法拉取模型列表") from e
+    client = OpenAI(base_url=base_url, api_key=api_key or "empty",
+                    timeout=timeout, max_retries=0)
+    ids = [str(m.id) for m in client.models.list()]
+    return sorted(dict.fromkeys(ids))
+
+
 def provider_by_name(name: str) -> Provider | None:
     return next((p for p in PROVIDERS if p.name == name), None)
 
@@ -303,8 +320,18 @@ def run_wizard() -> None:
 
     if choice == 0:
         base_url = input(f"base_url（{KEY_BASE_URL}）: ").strip()
-        model = input(f"model（{KEY_MODEL}）: ").strip()
         key = input(f"api_key（留空则不写入 {KEY_API_KEY}）: ").strip()
+        model = ""
+        try:
+            live = fetch_remote_models(base_url, key)
+            if live:
+                print(f"实时获取到 {len(live)} 个模型（前 20 个）：")
+                print("  " + " / ".join(live[:20]))
+                model = input("model（回车=用列表第一个）: ").strip() or live[0]
+        except Exception as e:
+            print(f"（实时拉取模型列表失败：{e}；请手动填写）")
+        if not model:
+            model = input(f"model（{KEY_MODEL}）: ").strip()
         if not base_url or not model:
             print("base_url/model 不能为空，已取消。")
             return
@@ -315,15 +342,24 @@ def run_wizard() -> None:
         print(f"base_url：{p.base_url}")
         if p.note:
             print(f"提示：{p.note}")
-        if p.models:
-            print("模型建议：" + " / ".join(p.models))
-        model = input(f"model（默认 {p.models[0] if p.models else ''}）: ").strip() or (p.models[0] if p.models else "")
-        if not model:
-            print("model 不能为空，已取消。")
-            return
         key = "" if not p.needs_key else input("api_key: ").strip()
         if p.needs_key and not key:
             print("需要 API key，已取消。")
+            return
+        model = ""
+        try:
+            live = fetch_remote_models(p.base_url, key)
+            if live:
+                print(f"实时获取到 {len(live)} 个模型（前 20 个）：")
+                print("  " + " / ".join(live[:20]))
+                model = input("model（回车=用实时列表第一个，总是该端点当前最新）: ").strip() or live[0]
+        except Exception:
+            if p.models:
+                print("（实时拉取失败，改用静态建议：" + " / ".join(p.models) + "）")
+        if not model:
+            model = input(f"model（{'默认 ' + p.models[0] if p.models else '必填'}）: ").strip() or (p.models[0] if p.models else "")
+        if not model:
+            print("model 不能为空，已取消。")
             return
 
     apply_credentials(base_url=base_url, api_key=key, model=model)

@@ -424,7 +424,7 @@
     <header class="gx-titlebar">
       <span class="gx-logo"><span class="badge">🔬</span>科研小助手 <span style="font-weight:700;color:#6a5fa0;font-size:12px">harness</span></span>
       <span class="grow"></span>
-      <span class="gx-model"><span class="dot"></span>deepseek-v4-pro · 主答</span>
+      <span class="gx-model"><span class="dot"></span>接入模型后显示</span>
       <button class="gx-tbtn mint" id="btnFolder">📁 文件夹</button>
       <button class="gx-tbtn sky" id="btnSkills">🧩 技能</button>
       <button class="gx-tbtn pink" id="btnSettings">⚙️ 设置</button>
@@ -487,7 +487,7 @@
     <div class="gx-field">
       <label for="prov">🍩 厂商预设</label>
       <select class="gx-in" id="prov">
-        <option>DeepSeek（deepseek-v4-pro）</option>
+        <option>DeepSeek</option>
         <option>OpenAI</option>
         <option>通义千问</option>
         <option>Kimi（月之暗面）</option>
@@ -507,8 +507,11 @@
       <input class="gx-in" id="key" type="password" placeholder="sk-…（Ollama 可留空）">
     </div>
     <div class="gx-field">
-      <label for="model">🤖 模型</label>
-      <input class="gx-in" id="model" type="text" value="deepseek-v4-pro">
+      <label for="model">🤖 模型 <span style="font-weight:600;color:var(--ink-soft);font-size:11px">（留空保存＝自动用该端点实时列表的最新模型）</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="gx-in" id="model" type="text" placeholder="输入或从下拉建议中选择">
+        <button class="fp-mini" id="btnFetchModels" type="button" style="flex:0 0 auto">🔄 实时获取</button>
+      </div>
     </div>
 
     <div class="gx-inline">
@@ -521,7 +524,7 @@
     </div>
     <div class="gx-field" id="criticWrap">
       <label for="critic">🧐 审查模型（轻量）</label>
-      <input class="gx-in" id="critic" type="text" value="deepseek-v4-flash">
+      <input class="gx-in" id="critic" type="text" placeholder="留空＝用厂商轻量建议">
     </div>
 
     <div class="gx-actions">
@@ -760,6 +763,11 @@
   document.getElementById('btnSkills').addEventListener('click',function(){ drawer.classList.toggle('open'); });
   document.getElementById('btnSettings').addEventListener('click',function(){ mask.classList.add('open'); });
   document.getElementById('btnFolder').addEventListener('click',function(){ openFolderPicker(); });
+  document.getElementById('btnFetchModels').addEventListener('click',function(){
+    if(!api){ toast('预览模式：接入后端后可实时拉取','🔄'); return; }
+    refreshModels(document.getElementById('base').value.trim(),
+                  document.getElementById('key').value.trim());
+  });
   var closes=document.querySelectorAll('[data-close]');
   Array.prototype.forEach.call(closes,function(b){ b.addEventListener('click',function(){
     mask.classList.remove('open'); document.getElementById('maskConfirm').classList.remove('open');
@@ -924,14 +932,28 @@
     sel.onchange=function(){
       var p=(boot.providers||[]).filter(function(x){ return x.id===sel.value; })[0];
       if(p){ document.getElementById('base').value=p.base_url; fillModelDatalist(p.models);
-             if(p.models[0]) document.getElementById('model').value=p.models[0];
-             if(p.light) document.getElementById('critic').value=p.light; }
-      else { fillModelDatalist([]); }
+             document.getElementById('model').value='';
+             var cw=document.getElementById('critic');
+             if(p.light && !cw.value.trim()) cw.value=p.light;
+             refreshModels(p.base_url, document.getElementById('key').value.trim()); }
+      else { fillModelDatalist([]); document.getElementById('model').value=''; }
     };
   }
   function fillModelDatalist(models){
     var dl=document.getElementById('modelList'); dl.innerHTML='';
     (models||[]).forEach(function(m){ var o=document.createElement('option'); o.value=m; dl.appendChild(o); });
+  }
+  /* 模型版本不固化：实时拉取该端点最新模型列表（静态建议只在拉取失败时兜底） */
+  function refreshModels(base, key){
+    if(!api) return;
+    api.list_models(base, key).then(function(r){
+      if(r && r.ok && r.models && r.models.length){
+        fillModelDatalist(r.models);
+        var mi=document.getElementById('model');
+        if(!mi.value.trim()) mi.value=r.models[0];
+        toast(r.msg+'，已填入第一个','🔄');
+      } else { toast((r&&r.msg)||'实时拉取失败，先用静态建议','⚠️'); }
+    }).catch(function(e){ toast('实时拉取失败:'+e,'⚠️'); });
   }
   function bindSave(boot){
     document.getElementById('btnSave').onclick=function(){

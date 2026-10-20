@@ -3,3 +3,4 @@ pydantic>=2.7
 python-dotenv>=1.0
 pillow>=10.0   # 聊天区图片壁纸（png/jpg/bmp/webp/GIF）与缩放所需
 opencv-python>=4.8   # 聊天区视频动态壁纸（mp4/avi/mkv/webm/mov 后台解码播放）
+pypdf>=4.0     # agent 的 PDF 工具（pdf_info/pdf_extract，解压 FlateDecode 流）

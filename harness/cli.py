@@ -23,7 +23,7 @@ from .skills import (
 )
 from .team import Collaboration, guess_critic_model
 from .tools import build_ask_tool
-from .workspace import FolderWorkspace, build_folder_tools
+from .workspace import FolderWorkspace, build_folder_tools, build_workspace_tools
 
 # Windows 老控制台默认 GBK 编码，遇到某些符号可能崩；统一按 UTF-8 输出
 try:
@@ -227,7 +227,7 @@ def main() -> None:
             try:
                 folder_ws = FolderWorkspace(arg.strip()) if folder_ws is None else folder_ws
                 folder_ws.set_root(arg.strip())
-                tools = build_folder_tools(folder_ws)
+                tools = build_workspace_tools(folder_ws)
                 agent.add_tools(tools)
                 if colab is not None:
                     colab.add_tools(tools)
@@ -276,7 +276,7 @@ def main() -> None:
                     )
                     extra_tools = [build_ask_tool()]
                     if folder_ws is not None:
-                        extra_tools += build_folder_tools(folder_ws)
+                        extra_tools += build_workspace_tools(folder_ws)
                     colab.add_tools(extra_tools)
                     ensure_skills(colab)      # 技能工具 + 清单 + 已预载技能，接给主答
                 answer = colab.run(raw)

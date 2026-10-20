@@ -148,3 +148,13 @@ def build_folder_tools(ws: FolderWorkspace) -> list[Tool]:
             confirm=True,
         ),
     ]
+
+
+def build_workspace_tools(ws: FolderWorkspace) -> list[Tool]:
+    """完整工作区能力包：文件工具 + PDF 工具（pypdf 解压 FlateDecode 流）+ 受确认门控的脚本执行。
+
+    Agent.add_tools 按工具名去重，同一引擎上重复挂载是安全的。
+    """
+    from .pdf_tools import build_pdf_tools
+    from .python_tools import build_python_tools
+    return [*build_folder_tools(ws), *build_pdf_tools(ws), *build_python_tools()]

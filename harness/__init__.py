@@ -39,7 +39,7 @@ from .skills import (
 )
 from .team import Collaboration
 from .tools import REGISTRY, Tool, ToolResult, build_ask_tool, make_tool, tool
-from .workspace import FolderWorkspace, build_folder_tools
+from .workspace import FolderWorkspace, build_folder_tools, build_workspace_tools
 
 __all__ = [
     "Agent",
