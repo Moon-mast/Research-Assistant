@@ -112,7 +112,9 @@ def chat_completion(
     if temperature is not None:
         kwargs["temperature"] = temperature
     if wire_extra:
-        kwargs.update(wire_extra)
+        # openai 3.x 的 create() 签名严格，未知字段（thinking/output_config 等厂商扩展）
+        # 必须走 extra_body 官方透传通道——直接传 kwargs 会 TypeError
+        kwargs["extra_body"] = dict(wire_extra)
 
     attempt = 0
     delay_s = max(backoff_initial_ms, 1) / 1000.0
