@@ -895,8 +895,11 @@
   }
   function fillSkills(boot){
     var d=document.getElementById('drawer');
-    Array.prototype.forEach.call(d.querySelectorAll('.gx-skill, h2, .sub'), function(n){ n.remove(); });
+    /* 清理必须连头部容器(.gx-drawer-head)一起删，否则每次 afterBoot（保存设置后重跑）
+       都会残留一个孤儿「✕ 关闭」按钮堆在左上角 —— 三个关闭按钮 bug 的根因 */
+    Array.prototype.forEach.call(d.querySelectorAll('.gx-skill, h2, .sub, .gx-drawer-head'), function(n){ n.remove(); });
     var hd=document.createElement('div');
+    hd.className='gx-drawer-head';
     hd.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
     var h2=document.createElement('h2'); h2.textContent='🧩 本地技能'; h2.style.margin='0'; hd.appendChild(h2);
     var xb=document.createElement('button'); xb.textContent='✕ 关闭';
